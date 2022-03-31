@@ -36,14 +36,11 @@ namespace VisionSymbolsBulkEdit
             {
                 editDataTable(dt);
                 util.WriteInBlue("Updating the SQL database... do not close the window.");
-                publishToSQL(dt,sqlInstance);
+                publishToSQL(dt, sqlInstance);                   
                 util.WriteInGreen("Output has been saved under: PIVision_Line&Text_Symbols_BulkEdit_output.txt");
                 util.PressEnterToExit();
             }
             else { util.PressEnterToExit(); }
-
-            
-
         }
 
         static public DataTable pullDataFromSQL(DataTable dataTable, string sqlserver)
@@ -67,6 +64,7 @@ namespace VisionSymbolsBulkEdit
 
         static public void editDataTable(DataTable dt)
         {
+            Utilities util = new Utilities();
             foreach (DataRow row in dt.Rows)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
@@ -83,51 +81,64 @@ namespace VisionSymbolsBulkEdit
                
                     if (symbolType.Equals("line") && ((double)config["StrokeWidth"] != 2))
                     {
-                            Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine(symbolType);
-                            file.WriteLine(symbolType);
-                            Console.ForegroundColor = ConsoleColor.White;
+                            util.WriteInYellow(symbolType);                          
+                            file.WriteLine(symbolType);                         
 
                             Console.WriteLine("StrokeWidth (old value): " + config["StrokeWidth"]);
                             file.WriteLine("StrokeWidth (old value): " + config["StrokeWidth"]);
+                            
                             config["StrokeWidth"] = 2;
-                            Console.ForegroundColor = ConsoleColor.Cyan;
-                            Console.WriteLine("StrokeWidth (new Value): " + config["StrokeWidth"]);
-                            Console.ForegroundColor = ConsoleColor.White;
+                            
+                            util.WriteInBlue("StrokeWidth (new Value): " + config["StrokeWidth"]);                          
                             file.WriteLine("StrokeWidth (new value): " + config["StrokeWidth"]);
-
                     }
 
                     if (symbolType.Equals("statictext")&& ((string)config["Stroke"] != "#00a2e8"))
-                    {                      
-                            Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine(symbolType);
+                    {
+                            util.WriteInYellow(symbolType);
                             file.WriteLine(symbolType);
-                            Console.ForegroundColor = ConsoleColor.White;
 
                             Console.WriteLine("Stroke (old value): " + config["Stroke"] + "; text_value: " + config["StaticText"]);
                             file.WriteLine("Stroke (old value): " + config["Stroke"] + "; text_value: " + config["StaticText"]);
 
                             config["Stroke"] = "#00a2e8";
-                            Console.ForegroundColor = ConsoleColor.Cyan;
-                            Console.WriteLine("Stroke (new Value): " + config["Stroke"]+ "; text_value: " + config["StaticText"]);
-                            Console.ForegroundColor = ConsoleColor.White;
+                            
+                            util.WriteInBlue("Stroke (new Value): " + config["Stroke"]+ "; text_value: " + config["StaticText"]);                          
                             file.WriteLine("Stroke (new Value): " + config["Stroke"] + "; text_value: " + config["StaticText"]);
                         
                     }
-                    row["EditorDisplay"] = JsonConvert.SerializeObject(json);
-                       
+                    row["EditorDisplay"] = JsonConvert.SerializeObject(json);                      
                 }
-            }
-           
+            }         
         }
 
         static public void publishToSQL(DataTable dt, string sqlserver)
         {
-           foreach (DataRow row in dt.Rows)
+            Utilities util = new Utilities();
+            try
             {
-                UpdateSQL(sqlserver,row["EditorDisplay"].ToString(), row["DisplayID"].ToString());
+                foreach (DataRow row in dt.Rows)
+                {
+                    UpdateSQL(sqlserver, row["EditorDisplay"].ToString(), row["DisplayID"].ToString());
+                }
             }
+            catch (SqlException ex)
+            {
+                StringBuilder errorMessages = new StringBuilder();
+
+                for (int i = 0; i < ex.Errors.Count; i++)
+                {
+                    errorMessages.Append("Index #" + i + "\n" +
+                        "Message: " + ex.Errors[i].Message + "\n" +
+                        "LineNumber: " + ex.Errors[i].LineNumber + "\n" +
+                        "Source: " + ex.Errors[i].Source + "\n");
+                }
+
+                util.WriteInRed("Failed to write to the [PIVision].[dbo].[View_Displays] table");
+                file.WriteLine("Failed to write to the [PIVision].[dbo].[View_Displays] table");
+                util.WriteInRed(errorMessages.ToString());              
+                file.WriteLine(errorMessages.ToString());
+            }         
         }
 
         static public void UpdateSQL(string sqlserver,string newEditorDisplayValue, string id)
